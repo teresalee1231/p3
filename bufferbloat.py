@@ -61,7 +61,7 @@ args = parser.parse_args()
 class BBTopo(Topo):
     "Simple topology for bufferbloat experiment."
 
-    def build(self, n=2):
+     def build(self, n=2):
         # create two hosts
         h1 = self.addHost("h1")
         h2 = self.addHost("h2")
@@ -72,8 +72,8 @@ class BBTopo(Topo):
 
         # TODO: Add links with appropriate characteristics
 
-        self.addLink(h1, switch)
-        self.addLink(h2, switch)
+        self.addLink(h1, switch, bw=args.bw_host, delay=args.delay, max_queue_size=args.maxq)
+        self.addLink(h2, switch, bw=args.bw_net, delay=args.delay, max_queue_size=args.maxq)
 
 
 # Simple wrappers around monitoring utilities.  You are welcome to
@@ -91,7 +91,15 @@ def start_iperf(net):
 
     # TODO: Start the iperf client on h1.  Ensure that you create a
     # long lived TCP flow.
-    # client = ...
+
+    # tell h1 client to do VV this command
+    # in the command
+    #  -c = destination
+    #  -t = time
+    #  %s -t %s > %s/iperf.out = redirect output to stdout
+    # after the % are the arguments the terminal puts in
+    h1.popen("iperf -c %s -t %s > %s/iperf.out" % (h2.IP(), args.time, args.dir), shell=True)
+
 
 def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
     monitor = Process(target=monitor_qlen,
@@ -104,20 +112,15 @@ def start_ping(net):
     # matter?)  Measure RTTs every 0.1 second.  Read the ping man page
     # to see how to do this.
 
-    h1 = net.get('h1')
-    h2 = net.get('h2')
-
-    # write the RTTs recorded to {args.dir}/ping.txt
-    # having the shell=true basically means that the cmd is getting run through a bash
-    # command
-    #
-    # the '>' is redirection to the file, which in our case will be the
-    # dir/ping.txt
-    popen = h1.popen("ping -i 0.1 %s > %s/ping.txt"%(h2.IP(), args.dir), shell=True)
-
     # Hint: Use host.popen(cmd, shell=True).  If you pass shell=True
     # to popen, you can redirect cmd's output using shell syntax.
     # i.e. ping ... > /path/to/ping.
+    h1 = net.get('h1')
+    h2 = net.get('h2')
+
+    popen = h1.popen("ping -i 0.1 %s > %s/ping.txt"%(h2.IP(), args.dir), shell=True)
+
+    pass
 
 def start_webserver(net):
     h1 = net.get('h1')
@@ -147,7 +150,8 @@ def bufferbloat():
                       outfile='%s/q.txt' % (args.dir))
 
     # TODO: Start iperf, webservers, etc.
-    # start_iperf(net)
+    start_iperf(net)
+    start_webserver(net)
 
     # TODO: measure the time it takes to complete webpage transfer
     # from h1 to h2 (say) 3 times.  Hint: check what the following
@@ -162,6 +166,9 @@ def bufferbloat():
     start_time = time()
     while True:
         # do the measurement (say) 3 times.
+        # -o = output - writes ouput to the file
+        # -s = silent - does not show progress meter or error message
+        # print it out?? idk lol
         sleep(5)
         now = time()
         delta = now - start_time
