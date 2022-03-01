@@ -60,8 +60,8 @@ args = parser.parse_args()
 
 class BBTopo(Topo):
     "Simple topology for bufferbloat experiment."
-
-     def build(self, n=2):
+    def build(self, n=2):
+        print("xx hi")
         # create two hosts
         h1 = self.addHost("h1")
         h2 = self.addHost("h2")
@@ -74,7 +74,7 @@ class BBTopo(Topo):
 
         self.addLink(h1, switch, bw=args.bw_host, delay=args.delay, max_queue_size=args.maxq)
         self.addLink(h2, switch, bw=args.bw_net, delay=args.delay, max_queue_size=args.maxq)
-
+        print("xx built topos")
 
 # Simple wrappers around monitoring utilities.  You are welcome to
 # contribute neatly written (using classes) monitoring scripts for
@@ -91,14 +91,14 @@ def start_iperf(net):
 
     # TODO: Start the iperf client on h1.  Ensure that you create a
     # long lived TCP flow.
-
+    print("xx iperfed")
     # tell h1 client to do VV this command
     # in the command
     #  -c = destination
     #  -t = time
     #  %s -t %s > %s/iperf.out = redirect output to stdout
     # after the % are the arguments the terminal puts in
-    h1.popen("iperf -c %s -t %s > %s/iperf.out" % (h2.IP(), args.time, args.dir), shell=True)
+    client = h1.popen("iperf -c %s -t %s > %s/iperf.out" % (h2.IP(), args.time, args.dir), shell=True)
 
 
 def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
@@ -120,7 +120,6 @@ def start_ping(net):
 
     popen = h1.popen("ping -i 0.1 %s > %s/ping.txt"%(h2.IP(), args.dir), shell=True)
 
-    pass
 
 def start_webserver(net):
     h1 = net.get('h1')
@@ -129,6 +128,7 @@ def start_webserver(net):
     return [proc]
 
 def bufferbloat():
+    print("igiygig")
     if not os.path.exists(args.dir):
         os.makedirs(args.dir)
     os.system("sysctl -w net.ipv4.tcp_congestion_control=%s" % args.cong)
@@ -146,12 +146,13 @@ def bufferbloat():
     # interface?  The interface numbering starts with 1 and increases.
     # Depending on the order you add links to your network, this
     # number may be 1 or 2.  Ensure you use the correct number.
+    print("xx qmon")
     qmon = start_qmon(iface='s0-eth2',
                       outfile='%s/q.txt' % (args.dir))
 
     # TODO: Start iperf, webservers, etc.
     start_iperf(net)
-    start_webserver(net)
+    handler = start_webserver(net)
 
     # TODO: measure the time it takes to complete webpage transfer
     # from h1 to h2 (say) 3 times.  Hint: check what the following
@@ -160,21 +161,38 @@ def bufferbloat():
     # spawned on host h1 (not from google!)
     # Hint: Verify the url by running your curl command without the
     # flags. The html webpage should be returned as the response.
+    h1 = net.get('h1')
+    h2 = net.get('h2')
+    #CLI(net)
+    #thing = h2.popen("curl %s" % (args.dir, handler[0].address_string()))
+    #thing = h2.popen("curl -o %s/output.txt -w %{time_total} %s" % (args.dir, h1.IP()))
+    stringy = f'{h1.IP()}/index.html'
+    s = "google.com"
+    print(stringy)
+    thing3 = h1.popen("ls > %s/files.txt"% args.dir ,shell = True)
+    #thing2 = h2.popen("echo 'ijefisj' > %s/mush.txt" % args.dir , shell = True)
+    thing2 = h2.popen("curl %s > %s/ringy.txt" % (s, args.dir), shell = True)
+    #thing2 = h2.popen("curl %s > %s/stringy.txt" % (stringy, args.dir), shell = True)
+    #thing2 = h2.popen("curl %s/index.html > %s/stringy.txt" % (h1.IP(), args.dir), shell = True)
+    #thing = h2.popen("curl -o /dev/null -s -w %%{time_total} %s" % stringy, shell = True)
 
     # Hint: have a separate function to do this and you may find the
     # loop below useful.
     start_time = time()
-    while True:
-        # do the measurement (say) 3 times.
-        # -o = output - writes ouput to the file
-        # -s = silent - does not show progress meter or error message
-        # print it out?? idk lol
-        sleep(5)
-        now = time()
-        delta = now - start_time
-        if delta > args.time:
-            break
-        print("%.1fs left..." % (args.time - delta))
+    # while True:
+        # # do the measurement (say) 3 times.
+        # # -o = output - writes ouput to the file
+        # # -s = silent - does not show progress meter or error message
+        # # /dev/null = prints to "void" lol
+        # # -w = writes to the terminal
+        # #    -> writes out the total time using %{time_total}
+
+        # sleep(5)
+        # now = time()
+        # delta = now - start_time
+        # if delta > args.time:
+        #     break
+        # print("%.1fs left..." % (args.time - delta))
 
     # TODO: compute average (and standard deviation) of the fetch
     # times.  You don't need to plot them.  Just note it in your
