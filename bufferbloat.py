@@ -10,6 +10,7 @@ from subprocess import Popen, PIPE
 from time import sleep, time
 from multiprocessing import Process
 from argparse import ArgumentParser
+from helper import avg, stdev
 
 from monitor import monitor_qlen
 
@@ -91,13 +92,6 @@ def start_iperf(net):
 
     # TODO: Start the iperf client on h1.  Ensure that you create a
     # long lived TCP flow.
-    print("xx iperfed")
-    # tell h1 client to do VV this command
-    # in the command
-    #  -c = destination
-    #  -t = time
-    #  %s -t %s > %s/iperf.out = redirect output to stdout
-    # after the % are the arguments the terminal puts in
     client = h1.popen("iperf -c %s -t %s > %s/iperf.out" % (h2.IP(), args.time, args.dir), shell=True)
 
 
@@ -118,7 +112,7 @@ def start_ping(net):
     h1 = net.get('h1')
     h2 = net.get('h2')
 
-    popen = h1.popen("ping -i 0.1 %s > %s/ping.txt"%(h2.IP(), args.dir), shell=True)
+    h1.popen("ping -i 0.1 %s > %s/ping.txt"%(h2.IP(), args.dir), shell=True)
 
 
 def start_webserver(net):
@@ -128,7 +122,6 @@ def start_webserver(net):
     return [proc]
 
 def bufferbloat():
-    print("igiygig")
     if not os.path.exists(args.dir):
         os.makedirs(args.dir)
     os.system("sysctl -w net.ipv4.tcp_congestion_control=%s" % args.cong)
@@ -146,13 +139,13 @@ def bufferbloat():
     # interface?  The interface numbering starts with 1 and increases.
     # Depending on the order you add links to your network, this
     # number may be 1 or 2.  Ensure you use the correct number.
-    print("xx qmon")
     qmon = start_qmon(iface='s0-eth2',
                       outfile='%s/q.txt' % (args.dir))
 
     # TODO: Start iperf, webservers, etc.
     start_iperf(net)
     handler = start_webserver(net)
+    start_ping(net)
 
     # TODO: measure the time it takes to complete webpage transfer
     # from h1 to h2 (say) 3 times.  Hint: check what the following
@@ -163,40 +156,34 @@ def bufferbloat():
     # flags. The html webpage should be returned as the response.
     h1 = net.get('h1')
     h2 = net.get('h2')
-    #CLI(net)
-    #thing = h2.popen("curl %s" % (args.dir, handler[0].address_string()))
-    #thing = h2.popen("curl -o %s/output.txt -w %{time_total} %s" % (args.dir, h1.IP()))
-    stringy = f'{h1.IP()}/index.html'
-    s = "google.com"
-    print(stringy)
-    thing3 = h1.popen("ls > %s/files.txt"% args.dir ,shell = True)
-    #thing2 = h2.popen("echo 'ijefisj' > %s/mush.txt" % args.dir , shell = True)
-    thing2 = h2.popen("curl %s > %s/ringy.txt" % (s, args.dir), shell = True)
-    #thing2 = h2.popen("curl %s > %s/stringy.txt" % (stringy, args.dir), shell = True)
-    #thing2 = h2.popen("curl %s/index.html > %s/stringy.txt" % (h1.IP(), args.dir), shell = True)
-    #thing = h2.popen("curl -o /dev/null -s -w %%{time_total} %s" % stringy, shell = True)
 
-    # Hint: have a separate function to do this and you may find the
-    # loop below useful.
     start_time = time()
-    # while True:
-        # # do the measurement (say) 3 times.
-        # # -o = output - writes ouput to the file
-        # # -s = silent - does not show progress meter or error message
-        # # /dev/null = prints to "void" lol
-        # # -w = writes to the terminal
-        # #    -> writes out the total time using %{time_total}
-
-        # sleep(5)
-        # now = time()
-        # delta = now - start_time
-        # if delta > args.time:
-        #     break
-        # print("%.1fs left..." % (args.time - delta))
+    all_times = []
+    while True:
+        # do the measurement (say) 3 times.
+        sleep(5)
+        now = time()
+        delta = now - start_time
+        if delta > args.time:
+            break
+        print("%.1fs left..." % (args.time - delta))
+        for i in range (0,3):
+            dl_time = h2.popen('curl -o /dev/null -s -w %%{time_total} %s/index.html' % h1.IP(), shell=True).communicate()[0]
+            all_times.append(float(dl_time))
+        print(all_times)
 
     # TODO: compute average (and standard deviation) of the fetch
     # times.  You don't need to plot them.  Just note it in your
     # README and explain.
+
+    # Hint: The command below invokes a CLI which you can use to
+    # debug.  It allows you to run arbitrary commands inside your
+    # emulated hosts h1 and h2.
+    # CLI(net)
+
+    print(avg(all_times))
+    print(stdev(all_times))
+
 
     # Hint: The command below invokes a CLI which you can use to
     # debug.  It allows you to run arbitrary commands inside your
