@@ -62,7 +62,6 @@ args = parser.parse_args()
 class BBTopo(Topo):
     "Simple topology for bufferbloat experiment."
     def build(self, n=2):
-        print("xx hi")
         # create two hosts
         h1 = self.addHost("h1")
         h2 = self.addHost("h2")
@@ -71,11 +70,8 @@ class BBTopo(Topo):
         # interface names will change from s0-eth1 to newname-eth1.
         switch = self.addSwitch('s0')
 
-        # TODO: Add links with appropriate characteristics
-
         self.addLink(h1, switch, bw=args.bw_host, delay=args.delay, max_queue_size=args.maxq)
         self.addLink(h2, switch, bw=args.bw_net, delay=args.delay, max_queue_size=args.maxq)
-        print("xx built topos")
 
 # Simple wrappers around monitoring utilities.  You are welcome to
 # contribute neatly written (using classes) monitoring scripts for
@@ -89,11 +85,7 @@ def start_iperf(net):
     # that the TCP flow is not receiver window limited.  If it is,
     # there is a chance that the router buffer may not get filled up.
     server = h2.popen("iperf -s -w 16m")
-
-    # TODO: Start the iperf client on h1.  Ensure that you create a
-    # long lived TCP flow.
     client = h1.popen("iperf -c %s -t %s > %s/iperf.out" % (h2.IP(), args.time, args.dir), shell=True)
-
 
 def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
     monitor = Process(target=monitor_qlen,
@@ -102,18 +94,12 @@ def start_qmon(iface, interval_sec=0.1, outfile="q.txt"):
     return monitor
 
 def start_ping(net):
-    # TODO: Start a ping train from h1 to h2 (or h2 to h1, does it
-    # matter?)  Measure RTTs every 0.1 second.  Read the ping man page
-    # to see how to do this.
-
     # Hint: Use host.popen(cmd, shell=True).  If you pass shell=True
     # to popen, you can redirect cmd's output using shell syntax.
     # i.e. ping ... > /path/to/ping.
     h1 = net.get('h1')
     h2 = net.get('h2')
-
     h1.popen("ping -i 0.1 %s > %s/ping.txt"%(h2.IP(), args.dir), shell=True)
-
 
 def start_webserver(net):
     h1 = net.get('h1')
@@ -134,31 +120,21 @@ def bufferbloat():
     # This performs a basic all pairs ping test.
     net.pingAll()
 
-    # TODO: Start monitoring the queue sizes.  Since the switch I
-    # created is "s0", I monitor one of the interfaces.  Which
-    # interface?  The interface numbering starts with 1 and increases.
-    # Depending on the order you add links to your network, this
-    # number may be 1 or 2.  Ensure you use the correct number.
     qmon = start_qmon(iface='s0-eth2',
                       outfile='%s/q.txt' % (args.dir))
 
-    # TODO: Start iperf, webservers, etc.
+    # start iperf, webserver, and ping
     start_iperf(net)
     handler = start_webserver(net)
     start_ping(net)
 
-    # TODO: measure the time it takes to complete webpage transfer
-    # from h1 to h2 (say) 3 times.  Hint: check what the following
-    # command does: curl -o /dev/null -s -w %{time_total} google.com
-    # Now use the curl command to fetch webpage from the webserver you
-    # spawned on host h1 (not from google!)
-    # Hint: Verify the url by running your curl command without the
-    # flags. The html webpage should be returned as the response.
     h1 = net.get('h1')
     h2 = net.get('h2')
 
     start_time = time()
     all_times = []
+
+    # measure the time it takes to complete webpage transfer
     while True:
         # do the measurement (say) 3 times.
         sleep(5)
@@ -172,18 +148,15 @@ def bufferbloat():
             all_times.append(float(dl_time))
         print(all_times)
 
-    # TODO: compute average (and standard deviation) of the fetch
-    # times.  You don't need to plot them.  Just note it in your
-    # README and explain.
-
     # Hint: The command below invokes a CLI which you can use to
     # debug.  It allows you to run arbitrary commands inside your
     # emulated hosts h1 and h2.
     # CLI(net)
 
+    print("The average time:")
     print(avg(all_times))
+    print("The standard deviation:")
     print(stdev(all_times))
-
 
     # Hint: The command below invokes a CLI which you can use to
     # debug.  It allows you to run arbitrary commands inside your
