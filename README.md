@@ -46,6 +46,7 @@ Another way to mitigate bufferbloat is to use Random Early Detection (RED). Afte
 q = 20:  
 - avg time: 2.274 seconds  
 - std dev: 0.786 seconds  
+
 q = 100:    
 - avg time: 2.082 seconds  
 - std dev: 0.474 seconds  
